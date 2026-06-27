@@ -7,18 +7,10 @@ func CreateBoard(size int) ([][]rune, error) {
 	for i := range size {
 		row = make([]rune, 0, size)
 		for j := range size {
-			if i%2 != 0 {
-				if j%2 != 0 {
-					row = append(row, '#')
-				} else {
-					row = append(row, ' ')
-				}
+			if (i+j)%2 == 0 {
+				row = append(row, '#')
 			} else {
-				if j%2 == 0 {
-					row = append(row, '#')
-				} else {
-					row = append(row, ' ')
-				}
+				row = append(row, ' ')
 			}
 		}
 		matrix = append(matrix, row)
