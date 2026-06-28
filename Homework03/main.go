@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
+	"strconv"
 
 	"github.com/shidemere/Homework03/board"
 )
@@ -12,7 +14,12 @@ func main() {
 		fmt.Println("you need to run program with size of board.\nExample: go run main.go 8")
 		os.Exit(1)
 	}
-	matrix, _ := board.CreateBoard(8)
+	arg := os.Args[1]
+	val, err := strconv.Atoi(arg)
+	if err != nil {
+		log.Fatalf("incorrect input argument: %v", err)
+	}
+	matrix, _ := board.CreateBoard(val)
 
 	for _, row := range matrix {
 		for _, r := range row {
