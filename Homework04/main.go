@@ -18,8 +18,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("can't start game: %v", err)
 	}
+	fmt.Printf("Player #%d: %s\n", 1, first)
+	fmt.Println("___________________________________")
 	board.PrintBoard(matrix)
-	fmt.Println(first, second)
+	fmt.Println("___________________________________")
+	fmt.Printf("Player #%d: %s\n", 2, second)
+	// fmt.Println(first, second)
 }
 
 func handleBoardSizeInput() int {
@@ -40,11 +44,11 @@ func handlePlayersNames() (first, second string, err error) {
 	scanner := bufio.NewScanner(os.Stdin)
 	var counter int
 	for {
+		fmt.Printf("Пожалуйста, введите имя %d го игрока: ", counter+1)
 		if scanner.Scan() {
 			if scanner.Err() != nil {
 				return "", "", fmt.Errorf("failed to handle player name: %w", err)
 			}
-			fmt.Printf("Пожалуйста, введите имя %d го игрока: ", counter+1)
 			input := scanner.Text()
 			err := validatePlayerName(input)
 			if err != nil {
@@ -53,15 +57,17 @@ func handlePlayersNames() (first, second string, err error) {
 
 			if first == "" {
 				first = input
+				counter++
+				continue
 			}
 			if first != "" && second == "" {
 				second = input
+				counter++
 			}
 
 			if first != "" && second != "" {
 				break
 			}
-			counter++
 		}
 	}
 	return first, second, nil
