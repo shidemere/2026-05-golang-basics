@@ -20,7 +20,7 @@ func main() {
 	}
 	fmt.Printf("Player #%d: %s\n", 1, first)
 	fmt.Println("___________________________________")
-	board.PrintBoard(matrix)
+	board.PrintBoard(matrix, val)
 	fmt.Println("___________________________________")
 	fmt.Printf("Player #%d: %s\n", 2, second)
 	// fmt.Println(first, second)

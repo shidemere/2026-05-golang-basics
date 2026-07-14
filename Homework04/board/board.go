@@ -3,10 +3,10 @@ package board
 
 import (
 	"fmt"
+	"slices"
 )
 
 var (
-	chars       = []rune{'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'}
 	whitePieces = []rune{'\u2654', '\u2655', '\u2656', '\u2657', '\u2658'}
 	whitePawn   = '\u2659'
 	blackPieces = []rune{'\u265A', '\u265B', '\u265C', '\u265D', '\u265E'}
@@ -19,8 +19,6 @@ func CreateBoard(size int) ([][]rune, error) {
 	for i := range size {
 		// fill left column with numbers
 		row = make([]rune, 0, size)
-		row = append(row, rune(i)+'1') // because rune(i) will show char with code point of i
-
 		for j := range size {
 			if (i+j)%2 == 0 {
 				row = append(row, '#')
@@ -31,8 +29,6 @@ func CreateBoard(size int) ([][]rune, error) {
 		matrix = append(matrix, row)
 	}
 	fillBoardWithChess(matrix)
-	lastLine := fillLastLine(size)
-	matrix = append(matrix, lastLine)
 	return matrix, nil
 }
 
@@ -41,13 +37,6 @@ func fillBoardWithChess(matrix [][]rune) {
 	fillWithPawn(matrix[1], whitePawn)
 	fillWithPawn(matrix[len(matrix)-2], blackPawn)
 	fillBottomLineWithBlackPieces(matrix[len(matrix)-1])
-}
-
-func fillLastLine(size int) []rune {
-	lastLineWithLetters := make([]rune, 0, size+1) // + 1 for whitespace in beginning
-	lastLineWithLetters = append(lastLineWithLetters, ' ')
-	lastLineWithLetters = fillLastLineWIthLettersBySizeOfBoard(lastLineWithLetters, size)
-	return lastLineWithLetters
 }
 
 func fillBottomLineWithBlackPieces(line []rune) {
@@ -84,24 +73,50 @@ func fillSecondLineWithPieces(firstLine []rune) {
 	}
 }
 
-func fillLastLineWIthLettersBySizeOfBoard(lastLineWithLetters []rune, size int) []rune {
-	counter := 0
-	for range size {
-		if counter == len(chars) {
-			counter = 0
+func PrintBoard(matrix [][]rune, size int) {
+	for lineidx, row := range matrix {
+		// print numbers
+		if size > lineidx {
+			fmt.Printf("%3d", lineidx+1)
 		}
-		lastLineWithLetters = append(lastLineWithLetters, chars[counter])
-		counter++
-	}
-	return lastLineWithLetters
-}
-
-func PrintBoard(matrix [][]rune) {
-	for _, row := range matrix {
 		for _, r := range row {
 			// %c prints the actual character representation of the rune
-			fmt.Printf("%c ", r)
+			fmt.Printf("%3c", r)
 		}
 		fmt.Println()
 	}
+
+	switch {
+	case size < 10:
+		fmt.Printf("  ")
+	case size > 10 && size < 100:
+		fmt.Print("   ")
+	case size > 100 && size < 1000:
+		fmt.Print("    ")
+	}
+
+	for i := range size {
+		ch := getColumnChar(i + 1)
+		fmt.Printf("%3s", ch)
+	}
+	fmt.Println()
+}
+
+func getColumnChar(i int) string {
+	if i <= 26 {
+		return string(rune(64 + i))
+	}
+
+	res := make([]rune, 0)
+	for i > 0 {
+		i--
+		remainder := i % 26 // find a letter
+		letter := rune('A' + remainder)
+
+		res = append(res, letter)
+		i = i / 26
+	}
+
+	slices.Reverse(res)
+	return string(res)
 }
