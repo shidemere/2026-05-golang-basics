@@ -3,7 +3,6 @@ package board
 
 import (
 	"fmt"
-	"slices"
 )
 
 var (
@@ -14,63 +13,47 @@ var (
 )
 
 func CreateBoard(size int) ([][]rune, error) {
-	matrix := make([][]rune, 0, size)
-	var row []rune
+	matrix := make([][]rune, size)
 	for i := range size {
-		// fill left column with numbers
-		row = make([]rune, 0, size)
+		matrix[i] = make([]rune, size)
 		for j := range size {
 			if (i+j)%2 == 0 {
-				row = append(row, '#')
+				matrix[i][j] = '#'
 			} else {
-				row = append(row, ' ')
+				matrix[i][j] = ' '
 			}
 		}
-		matrix = append(matrix, row)
 	}
+
 	fillBoardWithChess(matrix)
 	return matrix, nil
 }
 
 func fillBoardWithChess(matrix [][]rune) {
-	fillSecondLineWithPieces(matrix[0])
+	fillWithPieces(matrix[0], whitePieces)
 	fillWithPawn(matrix[1], whitePawn)
 	fillWithPawn(matrix[len(matrix)-2], blackPawn)
-	fillBottomLineWithBlackPieces(matrix[len(matrix)-1])
+	fillWithPieces(matrix[len(matrix)-1], blackPieces)
 }
 
-func fillBottomLineWithBlackPieces(line []rune) {
-	counter := 0
-	for i, v := range line {
-		if counter == len(whitePieces) {
-			counter = 0
-		}
-		if v == ' ' || v == '#' {
-			line[i] = blackPieces[counter]
-		}
-		counter++
-	}
-}
-
-func fillWithPawn(line []rune, r rune) {
-	for i, v := range line {
-		if v == ' ' || v == '#' {
-			line[i] = r
+func fillWithPieces(line, pieces []rune) {
+	for i, cell := range line {
+		if isEmptyCell(cell) {
+			line[i] = pieces[i%len(pieces)]
 		}
 	}
 }
 
-func fillSecondLineWithPieces(firstLine []rune) {
-	counter := 0
-	for i, v := range firstLine {
-		if counter == len(whitePieces) {
-			counter = 0
+func fillWithPawn(line []rune, pawn rune) {
+	for i, cell := range line {
+		if isEmptyCell(cell) {
+			line[i] = pawn
 		}
-		if v == ' ' || v == '#' {
-			firstLine[i] = whitePieces[counter]
-		}
-		counter++
 	}
+}
+
+func isEmptyCell(cell rune) bool {
+	return cell == ' ' || cell == '#'
 }
 
 func PrintBoard(matrix [][]rune, size int) {
@@ -86,14 +69,8 @@ func PrintBoard(matrix [][]rune, size int) {
 		fmt.Println()
 	}
 
-	switch {
-	case size < 10:
-		fmt.Printf("  ")
-	case size > 10 && size < 100:
-		fmt.Print("   ")
-	case size > 100 && size < 1000:
-		fmt.Print("    ")
-	}
+	rowNumberWidth := max(3, len(fmt.Sprint(size)))
+	fmt.Printf("%*s", rowNumberWidth, "")
 
 	for i := range size {
 		ch := getColumnChar(i + 1)
@@ -103,20 +80,12 @@ func PrintBoard(matrix [][]rune, size int) {
 }
 
 func getColumnChar(i int) string {
-	if i <= 26 {
-		return string(rune(64 + i))
-	}
-
-	res := make([]rune, 0)
+	result := ""
 	for i > 0 {
 		i--
-		remainder := i % 26 // find a letter
-		letter := rune('A' + remainder)
-
-		res = append(res, letter)
-		i = i / 26
+		result = string(rune('A'+i%26)) + result
+		i /= 26
 	}
 
-	slices.Reverse(res)
-	return string(res)
+	return result
 }
