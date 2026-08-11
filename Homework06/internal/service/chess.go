@@ -8,12 +8,11 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/shidemere/2026-05-golang-basics/Homework06/internal/console"
 	"github.com/shidemere/2026-05-golang-basics/Homework06/internal/model"
 )
-
-var playerCount int = 0
 
 func HandleGameProcess(g *model.Game, size int) error {
 	console.PrintInstructions()
@@ -23,7 +22,7 @@ func HandleGameProcess(g *model.Game, size int) error {
 		fmt.Printf("Игрок %s, ожидание ввода: \n", currentPlayer.GetPlayerName())
 		move, err := HandlePlayerInput(g.GetBoard(), currentPlayer, buffer)
 		if err != nil {
-			return fmt.Errorf("cant handle game process: %v", err)
+			fmt.Printf("cant handle game process: %v", err)
 		}
 		if move.Type == model.GiveUP {
 			fmt.Printf("%s сдался. Игра окончена\n", currentPlayer.GetPlayerName())
@@ -47,7 +46,7 @@ func HandlePlayerInput(b *model.Board, player *model.Player, scanner *bufio.Scan
 	switch move.Type {
 	case model.GiveUP:
 		return move, nil
-	case model.Bishop:
+	case model.Move:
 		splited := strings.Split(input, " ")
 		if len(splited) != 3 {
 			return nil, errors.New("неправильно задан ход, необходимо задать в формате: ход {старая позиция} {новая позиция}")
@@ -67,9 +66,18 @@ func HandlePlayerInput(b *model.Board, player *model.Player, scanner *bufio.Scan
 
 		// need to check if piece exist for moving
 		if !oldM.HasPiece() || oldM.GetPiece() == nil {
-			return nil, &model.MoveChessPieceNotExistError{splited[1]}
+			return nil, model.MoveChessPieceNotExistError{
+				Position: splited[1],
+			}
 		}
 
+		if oldM.GetPiece().GetColor() != player.GetColor() {
+			return nil, &model.ColorMismatchError{
+				PlayerName:  player.GetPlayerName(),
+				PlayerColor: player.GetColor(),
+				ChessColor:  oldM.GetPiece().GetColor(),
+			}
+		}
 		piece := oldM.GetPiece()
 		// move piece and build GameMove
 		newM.SetHasPiece(true)
@@ -89,34 +97,41 @@ func HandlePlayerInput(b *model.Board, player *model.Player, scanner *bufio.Scan
 
 		return result, nil
 	case model.Auto:
-		splited := strings.Split(input, " ")
-		if len(splited) != 2 {
-			return nil, errors.New("неправильно задан автоход, необходимо задать в формате: Автоход {количество}")
-		}
-
-		// TODO I don't clearly understand how i need to do this shit
-		// actually i need to think about some algorithm for generating movies
-		// Howewer, I also need to keep count of auto moves outside, because i can do only one single move in one time
 
 	}
 
 	return nil, errors.New("nothing to read")
 }
 
-// TODO it will break with input >10 because we have 3 chars, not two. And split for three is not work well now
+// connectMoveStringToCell convert A1 in string to cell
 func connectMoveStringToCell(s string, b *model.Board) (*model.Cell, error) {
 	splited := strings.Split(s, "")
-	if len(splited) != 2 {
+	if len(splited) < 2 {
 		return nil, errors.New("при указывании позиции для хода необходимо следовать формату {колонка}{строка}")
 	}
-	column := splited[0]
-	line, err := strconv.Atoi(splited[1])
+
+	var column strings.Builder
+	// var ln strings.Builder
+	clEnd := 0
+	for i, v := range splited {
+		if unicode.IsUpper([]rune(v)[0]) {
+			column.WriteString(v)
+		} else {
+			if clEnd == 0 {
+				clEnd = i
+			}
+		}
+	}
+
+	ln := strings.Join(splited[clEnd:], "")
+
+	line, err := strconv.Atoi(ln)
 	if err != nil {
 		return nil, fmt.Errorf("не удалось преобразовать номер строки: %v", err)
 	}
 
 	for i, v := range b.GetCells() {
-		if v.GetColumn() == column && v.GetLine() == line {
+		if v.GetColumn() == column.String() && v.GetLine() == line {
 			return &b.GetCells()[i], nil
 		}
 	}
@@ -125,19 +140,10 @@ func connectMoveStringToCell(s string, b *model.Board) (*model.Cell, error) {
 }
 
 func chooseInactivePlayer(g *model.Game) *model.Player {
-	if playerCount%2 == 0 {
-		return g.GetSecondPlayer()
-	} else {
+	if g.GetCurrentPlayer() == g.GetSecondPlayer() {
 		return g.GetFirstPlayer()
 	}
-}
-
-func chooseCurrentPlayer(g *model.Game) *model.Player {
-	if playerCount%2 == 0 {
-		return g.GetFirstPlayer()
-	} else {
-		return g.GetSecondPlayer()
-	}
+	return g.GetSecondPlayer()
 }
 
 func defineWinner(p *model.Player) {

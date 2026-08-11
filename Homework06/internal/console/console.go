@@ -52,7 +52,7 @@ func PrintInstructions() {
 		В текущей реализации доступны 3 команды:
 		1. Сдаться - прерывает игру
 		2. Автоход {количество} - делает определенное количество ходов
-		3. Ход {старая позиция} -> {новая позиция} - переводит одну из фигур из одной позиции в другую.
+		3. Ход {старая позиция} {новая позиция} - переводит одну из фигур из одной позиции в другую.
 		`)
 }
 
@@ -119,10 +119,10 @@ func ReadAndConverPlayerInput(b *model.Board, player *model.Player, scanner *buf
 		input := scanner.Text()
 
 		switch {
-		case strings.HasPrefix(input, "Сдался"):
+		case strings.HasPrefix(input, "Сдаться"):
 			return &model.GameMove{Type: model.GiveUP}, "", nil
 		case strings.HasPrefix(input, "Ход"):
-			move := &model.GameMove{Type: model.Bishop}
+			move := &model.GameMove{Type: model.Move}
 			return move, input, nil
 		case strings.HasPrefix(input, "Автоход"):
 			splited := strings.Split(input, " ")
@@ -130,6 +130,16 @@ func ReadAndConverPlayerInput(b *model.Board, player *model.Player, scanner *buf
 				return nil, "", errors.New("неправильно задан автоход, необходимо задать в формате: Автоход {количество}")
 			}
 
+			cnt, err := strconv.Atoi(splited[1])
+			if err != nil {
+				return nil, "", fmt.Errorf("can't process coutn for auto move %s", splited[1])
+			}
+
+			if cnt < 0 {
+				return nil, "", fmt.Errorf("can't process count for auto move, because %d is not positive (less than 0)", cnt)
+			}
+			move := &model.GameMove{Type: model.Auto, AutoMoveCount: cnt}
+			return move, input, nil
 		}
 	}
 

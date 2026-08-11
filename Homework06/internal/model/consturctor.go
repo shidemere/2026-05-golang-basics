@@ -59,20 +59,21 @@ func InitCells(size int) (f []Cell, firstPlayerPieces []Cell, firstPlayerPawns [
 		}
 	}
 
-	whitePieces := fillCellsWithPieces(field[0:size], whitePiecesRunes)
-	whitePawns := fillWithPawn(field[size:size*2], whitePawnRune)
-	blackPawns := fillWithPawn(field[len(field)-size*2:len(field)-size], blackPawnRune)
-	blackPieces := fillCellsWithPieces(field[len(field)-size:], blackPiecesRunes)
+	whitePieces := fillCellsWithPieces(field[0:size], whitePiecesRunes, PlayerColorWhite)
+	whitePawns := fillWithPawn(field[size:size*2], whitePawnRune, PlayerColorWhite)
+	blackPawns := fillWithPawn(field[len(field)-size*2:len(field)-size], blackPawnRune, PlayerColorBlack)
+	blackPieces := fillCellsWithPieces(field[len(field)-size:], blackPiecesRunes, PlayerColorBlack)
 	return field, whitePieces, whitePawns, blackPieces, blackPawns
 }
 
-func fillWithPawn(cell []Cell, pawn ChessPieceType) []Cell {
+func fillWithPawn(cell []Cell, pawn ChessPieceType, color Color) []Cell {
 	for i, c := range cell {
 		if isEmptyCell(*c.value) {
 			pawn := &ChessPiece{
 				value:    pawn,
 				currentX: c.line,
 				currentY: c.column,
+				color:    color,
 			}
 			cell[i].piece = pawn
 			cell[i].hasPiece = true
@@ -81,13 +82,14 @@ func fillWithPawn(cell []Cell, pawn ChessPieceType) []Cell {
 	return cell
 }
 
-func fillCellsWithPieces(cell []Cell, pieces []ChessPieceType) []Cell {
+func fillCellsWithPieces(cell []Cell, pieces []ChessPieceType, color Color) []Cell {
 	for i, c := range cell {
 		if isEmptyCell(*c.value) {
 			chess := &ChessPiece{
 				value:    pieces[i%len(pieces)],
 				currentX: c.line,
 				currentY: c.column,
+				color:    color,
 			}
 			cell[i].piece = chess
 			cell[i].hasPiece = true

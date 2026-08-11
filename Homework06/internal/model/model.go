@@ -35,8 +35,18 @@ type MoveChessPieceNotExistError struct {
 	Position string
 }
 
-func (m *MoveChessPieceNotExistError) Error() string {
+func (m MoveChessPieceNotExistError) Error() string {
 	return fmt.Sprintf("on position %s piece does not exist, nothing to move", m.Position)
+}
+
+type ColorMismatchError struct {
+	PlayerName  string
+	PlayerColor Color
+	ChessColor  Color
+}
+
+func (c ColorMismatchError) Error() string {
+	return fmt.Sprintf("Player with name %s and color %v can't move chess piece with color %v", c.PlayerName, c.PlayerColor, c.ChessColor)
 }
 
 type Game struct {
@@ -78,6 +88,7 @@ type GameMove struct {
 	OldPosition   *Cell
 	CurrentPlayer *Player
 	Piece         *ChessPiece
+	AutoMoveCount int
 }
 
 type GameConfig struct {
@@ -94,6 +105,10 @@ type Player struct {
 
 func (p *Player) GetPlayerName() string {
 	return p.name
+}
+
+func (p *Player) GetColor() Color {
+	return p.color
 }
 
 type ChessPiece struct {
@@ -121,6 +136,10 @@ func (p *ChessPiece) SetCurrentX(i int) {
 
 func (p *ChessPiece) SetCurrentY(s string) {
 	p.currentY = s
+}
+
+func (p *ChessPiece) GetColor() Color {
+	return p.color
 }
 
 type Board struct {
