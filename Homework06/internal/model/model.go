@@ -40,10 +40,11 @@ func (m *MoveChessPieceNotExistError) Error() string {
 }
 
 type Game struct {
-	first  *Player
-	second *Player
-	board  *Board
-	moves  []GameMove
+	first         *Player
+	second        *Player
+	currentPlayer *Player
+	board         *Board
+	moves         []GameMove
 }
 
 func (g *Game) GetBoard() *Board {
@@ -56,6 +57,19 @@ func (g *Game) GetFirstPlayer() *Player {
 
 func (g *Game) GetSecondPlayer() *Player {
 	return g.second
+}
+
+func (g *Game) GetCurrentPlayer() *Player {
+	return g.currentPlayer
+}
+
+func (g *Game) ChangeCurrentPlayer() {
+	switch g.currentPlayer {
+	case g.first:
+		g.currentPlayer = g.second
+	case g.second:
+		g.currentPlayer = g.first
+	}
 }
 
 type GameMove struct {
@@ -87,6 +101,10 @@ type ChessPiece struct {
 	color    Color
 	currentX int
 	currentY string
+}
+
+func (p *ChessPiece) GetValue() ChessPieceType {
+	return p.value
 }
 
 func (p *ChessPiece) GetCurrentX() int {

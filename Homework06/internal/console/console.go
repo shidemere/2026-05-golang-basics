@@ -1,0 +1,137 @@
+// Package console need for work with console output and input
+package console
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"log"
+	"os"
+	"strconv"
+	"strings"
+
+	"github.com/shidemere/2026-05-golang-basics/Homework06/internal/model"
+)
+
+// PrintBoard prints cells as a square board with size cells in each row.
+func PrintBoard(cells []model.Cell, size int) {
+	if size <= 0 {
+		return
+	}
+
+	for i, cell := range cells {
+		if i%size == 0 {
+			fmt.Printf("%3d", i/size+1)
+		}
+
+		if cell.HasPiece() {
+			fmt.Printf("%3c", cell.GetPiece().GetValue())
+		} else {
+			fmt.Printf("%3c", *cell.GetValue())
+		}
+		if (i+1)%size == 0 {
+			fmt.Println()
+		}
+	}
+
+	fmt.Printf("%3s", "")
+	for i := 0; i < size && i < len(cells); i++ {
+		fmt.Printf("%3s", cells[i].GetColumn())
+	}
+	fmt.Println()
+}
+
+func CleanBoard() {
+	fmt.Print("\033[H\033[2J")
+}
+
+func PrintInstructions() {
+	fmt.Println("\n---------------------")
+	fmt.Println(`
+		Необходимо ввести команду. 
+		В текущей реализации доступны 3 команды:
+		1. Сдаться - прерывает игру
+		2. Автоход {количество} - делает определенное количество ходов
+		3. Ход {старая позиция} -> {новая позиция} - переводит одну из фигур из одной позиции в другую.
+		`)
+}
+
+func HandleBoardSizeInput() int {
+	if len(os.Args) < 2 {
+		fmt.Println("you need to run program with size of board.\nExample: go run main.go 8")
+		os.Exit(1)
+	}
+	arg := os.Args[1]
+	val, err := strconv.Atoi(arg)
+	if err != nil {
+		log.Fatalf("incorrect input argument: %v", err)
+	}
+
+	return val
+}
+
+func HandlePlayersNames() (first, second string, err error) {
+	scanner := bufio.NewScanner(os.Stdin)
+	var counter int
+	for {
+		fmt.Printf("Пожалуйста, введите имя %d го игрока: ", counter+1)
+		if scanner.Scan() {
+			if scanner.Err() != nil {
+				return "", "", fmt.Errorf("failed to handle player name: %w", err)
+			}
+			input := scanner.Text()
+			err := validatePlayerName(input)
+			if err != nil {
+				return "", "", fmt.Errorf("failed to handle player name: %v", err)
+			}
+
+			if first == "" {
+				first = input
+				counter++
+				continue
+			}
+			if first != "" && second == "" {
+				second = input
+				counter++
+			}
+
+			if first != "" && second != "" {
+				break
+			}
+		}
+	}
+	return first, second, nil
+}
+
+func validatePlayerName(input string) any {
+	if len(input) <= 3 || len(input) > 64 {
+		return errors.New("name too long or too short, should be betwenn 3 and 64 character")
+	}
+
+	return nil
+}
+
+func ReadAndConverPlayerInput(b *model.Board, player *model.Player, scanner *bufio.Scanner) (*model.GameMove, string, error) {
+	if scanner.Scan() {
+		if scanner.Err() != nil {
+			return nil, "", fmt.Errorf("cant process game move: %v", scanner.Err())
+		}
+		input := scanner.Text()
+
+		switch {
+		case strings.HasPrefix(input, "Сдался"):
+			return &model.GameMove{Type: model.GiveUP}, "", nil
+		case strings.HasPrefix(input, "Ход"):
+			move := &model.GameMove{Type: model.Bishop}
+			return move, input, nil
+		case strings.HasPrefix(input, "Автоход"):
+			splited := strings.Split(input, " ")
+			if len(splited) != 2 {
+				return nil, "", errors.New("неправильно задан автоход, необходимо задать в формате: Автоход {количество}")
+			}
+
+		}
+	}
+
+	return nil, "", errors.New("nothing to read")
+}

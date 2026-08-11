@@ -1,9 +1,5 @@
 package model
 
-import (
-	"fmt"
-)
-
 var (
 	whitePiecesRunes                = []ChessPieceType{'\u2654', '\u2655', '\u2656', '\u2657', '\u2658'}
 	whitePawnRune    ChessPieceType = '\u2659'
@@ -17,9 +13,10 @@ func NewGame(config *GameConfig) *Game {
 	second := initPlayer(config.SecondPlayerName, PlayerColorBlack, blackPieces, blackPawns)
 
 	game := &Game{
-		first:  first,
-		second: second,
-		board:  &Board{cells: field},
+		first:         first,
+		second:        second,
+		currentPlayer: first,
+		board:         &Board{cells: field},
 	}
 	return game
 }
@@ -101,34 +98,6 @@ func fillCellsWithPieces(cell []Cell, pieces []ChessPieceType) []Cell {
 
 func isEmptyCell(cell rune) bool {
 	return cell == ' ' || cell == '#'
-}
-
-// DebugPrintCells prints cells as a square board with size cells in each row.
-func DebugPrintCells(cells []Cell, size int) {
-	if size <= 0 {
-		return
-	}
-
-	for i, cell := range cells {
-		if i%size == 0 {
-			fmt.Printf("%3d", i/size+1)
-		}
-
-		if cell.hasPiece {
-			fmt.Printf("%3c", cell.piece.value)
-		} else {
-			fmt.Printf("%3c", *cell.value)
-		}
-		if (i+1)%size == 0 {
-			fmt.Println()
-		}
-	}
-
-	fmt.Printf("%3s", "")
-	for i := 0; i < size && i < len(cells); i++ {
-		fmt.Printf("%3s", cells[i].column)
-	}
-	fmt.Println()
 }
 
 func getColumnChar(i int) string {
