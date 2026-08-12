@@ -82,6 +82,9 @@ func (g *Game) ChangeCurrentPlayer() {
 	}
 }
 
+type Entity interface {
+	isEntity() bool
+}
 type GameMove struct {
 	Type          MoveType
 	NewPosition   *Cell
@@ -89,6 +92,10 @@ type GameMove struct {
 	CurrentPlayer *Player
 	Piece         *ChessPiece
 	AutoMoveCount int
+}
+
+func (m *GameMove) isEntity() bool {
+	return true
 }
 
 type GameConfig struct {
@@ -101,6 +108,14 @@ type Player struct {
 	name   string
 	color  Color
 	pieces []*ChessPiece
+}
+
+func (p *Player) isEntity() bool {
+	return true
+}
+
+func (p *Player) GetChessPieces() []*ChessPiece {
+	return p.pieces
 }
 
 func (p *Player) GetPlayerName() string {
@@ -116,6 +131,10 @@ type ChessPiece struct {
 	color    Color
 	currentX int
 	currentY string
+}
+
+func (c *ChessPiece) isEntity() bool {
+	return true
 }
 
 func (p *ChessPiece) GetValue() ChessPieceType {

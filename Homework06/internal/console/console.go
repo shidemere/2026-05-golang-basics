@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"strconv"
@@ -111,37 +112,43 @@ func validatePlayerName(input string) any {
 	return nil
 }
 
-func ReadAndConverPlayerInput(b *model.Board, player *model.Player, scanner *bufio.Scanner) (*model.GameMove, string, error) {
-	if scanner.Scan() {
-		if scanner.Err() != nil {
-			return nil, "", fmt.Errorf("cant process game move: %v", scanner.Err())
+func ReadAndConvertPlayerInput(scanner *bufio.Scanner) (*model.GameMove, string, error) {
+	if !scanner.Scan() {
+		if err := scanner.Err(); err != nil {
+			return nil, "", fmt.Errorf("can't process game move: %w", err)
 		}
-		input := scanner.Text()
-
-		switch {
-		case strings.HasPrefix(input, "Сдаться"):
-			return &model.GameMove{Type: model.GiveUP}, "", nil
-		case strings.HasPrefix(input, "Ход"):
-			move := &model.GameMove{Type: model.Move}
-			return move, input, nil
-		case strings.HasPrefix(input, "Автоход"):
-			splited := strings.Split(input, " ")
-			if len(splited) != 2 {
-				return nil, "", errors.New("неправильно задан автоход, необходимо задать в формате: Автоход {количество}")
-			}
-
-			cnt, err := strconv.Atoi(splited[1])
-			if err != nil {
-				return nil, "", fmt.Errorf("can't process coutn for auto move %s", splited[1])
-			}
-
-			if cnt < 0 {
-				return nil, "", fmt.Errorf("can't process count for auto move, because %d is not positive (less than 0)", cnt)
-			}
-			move := &model.GameMove{Type: model.Auto, AutoMoveCount: cnt}
-			return move, input, nil
-		}
+		return nil, "", io.EOF
 	}
 
-	return nil, "", errors.New("nothing to read")
+	input := scanner.Text()
+	fields := strings.Fields(input)
+	if len(fields) == 0 {
+		return nil, "", errors.New("команда не задана")
+	}
+
+	switch fields[0] {
+	case "Сдаться":
+		if len(fields) != 1 {
+			return nil, "", errors.New("команда сдачи задается в формате: Сдаться")
+		}
+		return &model.GameMove{Type: model.GiveUP}, input, nil
+	case "Ход":
+		return &model.GameMove{Type: model.Move}, input, nil
+	case "Автоход":
+		if len(fields) != 2 {
+			return nil, "", errors.New("неправильно задан автоход, необходимо задать в формате: Автоход {количество}")
+		}
+
+		count, err := strconv.Atoi(fields[1])
+		if err != nil {
+			return nil, "", fmt.Errorf("количество автоходов %q не является числом", fields[1])
+		}
+		if count <= 0 {
+			return nil, "", fmt.Errorf("количество автоходов должно быть больше нуля, получено %d", count)
+		}
+
+		return &model.GameMove{Type: model.Auto, AutoMoveCount: count}, input, nil
+	default:
+		return nil, "", fmt.Errorf("неизвестная команда %q", fields[0])
+	}
 }
