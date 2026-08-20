@@ -57,9 +57,20 @@ func PrintInstructions() {
 		`)
 }
 
+func PrintConcurrentInstructions() {
+	fmt.Println("\n---------------------")
+	fmt.Println(`
+		Команды вводятся последовательно для каждой активной доски.
+		В режиме нескольких досок доступны 2 команды:
+		1. Сдаться - завершает игру на выбранной доске.
+		2. Автоход {количество} - запускает указанное количество автоматических ходов.
+		Ручные ходы в этом режиме недоступны.
+		`)
+}
+
 func HandleBoardSizeInputAndCount() (int, int) {
-	if len(os.Args) < 2 {
-		fmt.Println("you need to run program with size of board.\nExample: go run main.go 8")
+	if len(os.Args) < 3 {
+		fmt.Println("you need to run program with size and count of boards.\nExample: go run . 8 2")
 		os.Exit(1)
 	}
 	arg := os.Args[1]
@@ -67,43 +78,53 @@ func HandleBoardSizeInputAndCount() (int, int) {
 	if err != nil {
 		log.Fatalf("incorrect input argument: %v", err)
 	}
+	if val < 2 {
+		log.Fatalf("board size must be at least 2, got %d", val)
+	}
 
 	sec := os.Args[2]
 	secV, err := strconv.Atoi(sec)
 	if err != nil {
 		log.Fatalf("incorrect second input argument: %v", err)
 	}
+	if secV <= 0 {
+		log.Fatalf("count of boards must be positive, got %d", secV)
+	}
 	return val, secV
 }
 
-func HandlePlayersNames() (first, second string, err error) {
-	scanner := bufio.NewScanner(os.Stdin)
+func HandlePlayersNames(scanner *bufio.Scanner) (first, second string, err error) {
+	if scanner == nil {
+		return "", "", errors.New("scanner is nil")
+	}
+
 	var counter int
 	for {
 		fmt.Printf("Пожалуйста, введите имя %d го игрока: ", counter+1)
-		if scanner.Scan() {
-			if scanner.Err() != nil {
+		if !scanner.Scan() {
+			if err := scanner.Err(); err != nil {
 				return "", "", fmt.Errorf("failed to handle player name: %w", err)
 			}
-			input := scanner.Text()
-			err := validatePlayerName(input)
-			if err != nil {
-				return "", "", fmt.Errorf("failed to handle player name: %v", err)
-			}
+			return "", "", io.EOF
+		}
 
-			if first == "" {
-				first = input
-				counter++
-				continue
-			}
-			if first != "" && second == "" {
-				second = input
-				counter++
-			}
+		input := scanner.Text()
+		if err := validatePlayerName(input); err != nil {
+			return "", "", fmt.Errorf("failed to handle player name: %v", err)
+		}
 
-			if first != "" && second != "" {
-				break
-			}
+		if first == "" {
+			first = input
+			counter++
+			continue
+		}
+		if second == "" {
+			second = input
+			counter++
+		}
+
+		if first != "" && second != "" {
+			break
 		}
 	}
 	return first, second, nil

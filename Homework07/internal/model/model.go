@@ -3,6 +3,7 @@ package model
 
 import (
 	"fmt"
+	"time"
 )
 
 type Color int
@@ -221,8 +222,18 @@ func (c *Cell) SetPiece(p *ChessPiece) {
 	c.piece = p
 }
 
-type Triple struct {
-	Cells         []Cell
-	Size          int
+type StateSnapshot struct {
+	NumberOfBoard      int
+	Board              []Cell
+	CurrentPlayerName  string
+	LastMovePlayerName string
+	LastMoveDuration   time.Duration
+	RemainingAutoMoves int
+	Finished           bool
+}
+
+type CommandResult struct {
 	NumberOfBoard int
+	Finished      bool
+	Err           error
 }

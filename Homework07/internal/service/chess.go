@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math/rand"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -17,10 +16,20 @@ import (
 	"github.com/shidemere/2026-05-golang-basics/Homework07/internal/model"
 )
 
-func HandleGameProcess(g *model.Game, size int, ch chan<- model.Triple, numberOfBoard int) error {
-	console.PrintInstructions()
-	buffer := bufio.NewScanner(os.Stdin)
+func HandleGameProcess(
+	g *model.Game,
+	size int,
+	buffer *bufio.Scanner,
+) error {
+	if g == nil {
+		return errors.New("game is nil")
+	}
+	if buffer == nil {
+		return errors.New("scanner is nil")
+	}
+
 	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	console.PrintBoard(g.GetBoard().GetCells(), size)
 
 	for {
 		currentPlayer := g.GetCurrentPlayer()
@@ -39,21 +48,82 @@ func HandleGameProcess(g *model.Game, size int, ch chan<- model.Triple, numberOf
 		case model.GiveUP:
 			fmt.Printf("%s сдался. Игра окончена\n", currentPlayer.GetPlayerName())
 			defineWinner(chooseInactivePlayer(g))
-			ch <- model.Triple{Cells: g.GetBoard().GetCells(), Size: size, NumberOfBoard: numberOfBoard}
-			close(ch)
 			return nil
 		case model.Auto:
-			if err := makeAutoMoves(g, move.AutoMoveCount, size, random, time.Sleep); err != nil {
+			if err := makeAutoMoves(g, move.AutoMoveCount, random, time.Sleep, func(player string, duration time.Duration, _ int) {
+				fmt.Printf("Игрок %s выполнил ход за %s\n", player, duration.Round(time.Millisecond))
+				console.PrintBoard(g.GetBoard().GetCells(), size)
+			}); err != nil {
 				fmt.Printf("Не удалось выполнить автоход: %v\n", err)
 			}
-			ch <- model.Triple{Cells: g.GetBoard().GetCells(), Size: size, NumberOfBoard: numberOfBoard}
 		case model.Move:
-			completeMove(g, move, size)
-			ch <- model.Triple{Cells: g.GetBoard().GetCells(), Size: size, NumberOfBoard: numberOfBoard}
+			completeMove(g, move)
+			console.PrintBoard(g.GetBoard().GetCells(), size)
 		default:
 			fmt.Printf("Неизвестный тип хода: %d\n", move.Type)
 		}
 	}
+}
+
+func RunConcurrentGame(
+	g *model.Game,
+	numberOfBoard int,
+	commands <-chan model.GameMove,
+	drawer chan<- model.StateSnapshot,
+	results chan<- model.CommandResult,
+) {
+	if g == nil {
+		results <- model.CommandResult{NumberOfBoard: numberOfBoard, Finished: true, Err: errors.New("game is nil")}
+		return
+	}
+
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	sendStateToDrawer(g, drawer, numberOfBoard, "", 0, 0, false)
+
+	for command := range commands {
+		switch command.Type {
+		case model.GiveUP:
+			player := g.GetCurrentPlayer()
+			sendStateToDrawer(g, drawer, numberOfBoard, player.GetPlayerName(), 0, 0, true)
+			results <- model.CommandResult{NumberOfBoard: numberOfBoard, Finished: true}
+			return
+		case model.Auto:
+			err := makeAutoMoves(g, command.AutoMoveCount, random, time.Sleep, func(player string, duration time.Duration, remaining int) {
+				sendStateToDrawer(g, drawer, numberOfBoard, player, duration, remaining, false)
+			})
+			results <- model.CommandResult{NumberOfBoard: numberOfBoard, Err: err}
+		default:
+			results <- model.CommandResult{
+				NumberOfBoard: numberOfBoard,
+				Err:           fmt.Errorf("unsupported command type %d", command.Type),
+			}
+		}
+	}
+}
+
+func sendStateToDrawer(
+	g *model.Game,
+	drawer chan<- model.StateSnapshot,
+	number int,
+	lastMovePlayer string,
+	lastMoveDuration time.Duration,
+	remaining int,
+	finished bool,
+) {
+	cells := g.GetBoard().GetCells()
+	boardCopy := make([]model.Cell, len(cells))
+	copy(boardCopy, cells)
+
+	snapshot := model.StateSnapshot{
+		NumberOfBoard:      number,
+		Board:              boardCopy,
+		CurrentPlayerName:  g.GetCurrentPlayer().GetPlayerName(),
+		LastMovePlayerName: lastMovePlayer,
+		LastMoveDuration:   lastMoveDuration,
+		RemainingAutoMoves: remaining,
+		Finished:           finished,
+	}
+	drawer <- snapshot
 }
 
 func HandlePlayerInput(b *model.Board, player *model.Player, scanner *bufio.Scanner) (*model.GameMove, error) {
@@ -86,10 +156,17 @@ func HandlePlayerInput(b *model.Board, player *model.Player, scanner *bufio.Scan
 	return nil, fmt.Errorf("неподдерживаемый тип хода: %d", move.Type)
 }
 
-func makeAutoMoves(g *model.Game, count, size int, random *rand.Rand, sleep func(time.Duration)) error {
-	for range count {
+func makeAutoMoves(
+	g *model.Game,
+	count int,
+	random *rand.Rand,
+	sleep func(time.Duration),
+	afterMove func(player string, duration time.Duration, remaining int),
+) error {
+	for moveNumber := range count {
 		player := g.GetCurrentPlayer()
 		delay := time.Duration(random.Intn(3)+2) * time.Second
+		startedAt := time.Now()
 		sleep(delay)
 
 		move, err := makeRandomMove(g.GetBoard(), player, random)
@@ -97,7 +174,10 @@ func makeAutoMoves(g *model.Game, count, size int, random *rand.Rand, sleep func
 			return fmt.Errorf("игрок %s: %w", player.GetPlayerName(), err)
 		}
 
-		completeMove(g, move, size)
+		completeMove(g, move)
+		if afterMove != nil {
+			afterMove(player.GetPlayerName(), time.Since(startedAt), count-moveNumber-1)
+		}
 	}
 
 	return nil
@@ -171,7 +251,7 @@ func makeMove(oldM *model.Cell, newM *model.Cell, player *model.Player) (*model.
 	return result, nil
 }
 
-func completeMove(g *model.Game, move *model.GameMove, size int) {
+func completeMove(g *model.Game, move *model.GameMove) {
 	g.AddMove(*move)
 	g.ChangeCurrentPlayer()
 }
